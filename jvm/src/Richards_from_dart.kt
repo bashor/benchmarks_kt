@@ -35,7 +35,7 @@
 // The benchmark was originally implemented in BCPL by
 // Martin Richards.
 
-package org.jetbrains.kotlin.benchmarks.Richards_from_darts
+package org.jetbrains.kotlin.benchmarks.Richards_from_darts.jvm
 
 fun main(args: Array<String>) {
     Richards.report();
@@ -44,6 +44,7 @@ fun main(args: Array<String>) {
  * Richards imulates the task dispatcher of an operating system.
  **/
 import kotlin.test.assertEquals
+import org.jetbrains.kotlin.benchmarks.BenchmarkBase
 
 object Richards : BenchmarkBase("Richards") {
     override fun run() {
@@ -408,7 +409,7 @@ class HandlerTask(override val scheduler: Scheduler) : Task {
                 v2 = packet.addTo(v2)
             }
         }
-        val tV1 = v1 
+        val tV1 = v1
         if (tV1 != null) {
             val count = tV1.a1
             if (count < Richards.DATA_SIZE) {

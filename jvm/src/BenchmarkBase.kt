@@ -1,3 +1,5 @@
+package org.jetbrains.kotlin.benchmarks
+
 import java.text.NumberFormat
 
 abstract class BenchmarkBase(val name: String) {
@@ -47,8 +49,8 @@ abstract class BenchmarkBase(val name: String) {
 
     fun report() {
         val score = measure();
-//        println("$name: ${NumberFormat.getInstance().format(score)} us.");
-//        println("$name: ${score.toLong()} us.");
+        //        println("$name: ${NumberFormat.getInstance().format(score)} us.");
+        //        println("$name: ${score.toLong()} us.");
         println("$name: ${score.toString("%f")} us.");
     }
 }
