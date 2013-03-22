@@ -7,7 +7,6 @@ fun main(args: Array<String>) {
     DeltaBlue.report();
 }
 
-
 /// Benchmark class required to report results.
 object DeltaBlue: BenchmarkBase("DeltaBlue") {
     override fun run() {
@@ -16,7 +15,6 @@ object DeltaBlue: BenchmarkBase("DeltaBlue") {
     }
 }
 
-
 /**
  * Strengths are used to measure the relative importance of constraints.
  * New strengths may be inserted in the strength hierarchy without
@@ -24,7 +22,7 @@ object DeltaBlue: BenchmarkBase("DeltaBlue") {
  * this class, so == can be used for value comparison.
  */
 class Strength(val value: Int, val name: String) {
-    fun nextWeaker(): Strength = array(WEAKEST, WEAK_DEFAULT, NORMAL, STRONG_DEFAULT, PREFERRED, STRONG_REFERRED)[value];
+    fun nextWeaker(): Strength = NEXT[value];
 
     class object {
         fun stronger(s1: Strength, s2: Strength) = s1.value < s2.value
@@ -37,16 +35,16 @@ class Strength(val value: Int, val name: String) {
     }
 }
 
-
 // Compile time computed constants.
-val REQUIRED        = Strength(0, "required");
-val STRONG_REFERRED = Strength(1, "strongPreferred");
-val PREFERRED       = Strength(2, "preferred");
-val STRONG_DEFAULT  = Strength(3, "strongDefault");
-val NORMAL          = Strength(4, "normal");
-val WEAK_DEFAULT    = Strength(5, "weakDefault");
-val WEAKEST         = Strength(6, "weakest");
+val REQUIRED        = Strength(0, "required")
+val STRONG_REFERRED = Strength(1, "strongPreferred")
+val PREFERRED       = Strength(2, "preferred")
+val STRONG_DEFAULT  = Strength(3, "strongDefault")
+val NORMAL          = Strength(4, "normal")
+val WEAK_DEFAULT    = Strength(5, "weakDefault")
+val WEAKEST         = Strength(6, "weakest")
 
+val NEXT = array(WEAKEST, WEAK_DEFAULT, NORMAL, STRONG_DEFAULT, PREFERRED, STRONG_REFERRED)
 
 abstract class Constraint(val strength: Strength) {
     abstract fun isSatisfied(): Boolean
@@ -56,14 +54,14 @@ abstract class Constraint(val strength: Strength) {
     abstract fun chooseMethod(mark: Int): Unit
     abstract fun markInputs(mark: Int): Unit
     abstract fun inputsKnown(mark: Int): Boolean
-    abstract fun output(): Variable?
+    abstract fun output(): Variable
     abstract fun execute(): Unit
     abstract fun recalculate(): Unit
 
     /// Activate this constraint and attempt to satisfy it.
     fun addConstraint() {
         addToGraph();
-        planner?.incrementalAdd(this);
+        planner.incrementalAdd(this);
     }
 
     /**
@@ -83,17 +81,18 @@ abstract class Constraint(val strength: Strength) {
         }
         markInputs(mark);
         val out = output();
-        val overridden = out?.determinedBy;
+        val overridden = out.determinedBy;
         if (overridden != null)
             overridden.markUnsatisfied();
-        out!!.determinedBy = this;
-        if (!planner!!.addPropagate(this, mark)) print("Cycle encountered");
+        out.determinedBy = this;
+        if (!planner.addPropagate(this, mark)) print("Cycle encountered");
         out.mark = mark;
         return overridden;
     }
 
     fun destroyConstraint() {
-        if (isSatisfied()) planner?.incrementalRemove(this);
+        if (isSatisfied())
+            planner.incrementalRemove(this);
         removeFromGraph();
     }
 
@@ -108,7 +107,7 @@ abstract class Constraint(val strength: Strength) {
 /**
  * Abstract superclass for constraints having a single possible output variable.
  */
-abstract class UnaryConstraint(val myOutput: Variable?, strength: Strength) : Constraint(strength) {
+abstract class UnaryConstraint(val myOutput: Variable, strength: Strength) : Constraint(strength) {
     var satisfied = false;
 
     fun init() {
@@ -117,13 +116,13 @@ abstract class UnaryConstraint(val myOutput: Variable?, strength: Strength) : Co
 
     /// Adds this constraint to the constraint graph
     override fun addToGraph() {
-        myOutput?.addConstraint(this);
+        myOutput.addConstraint(this);
         satisfied = false;
     }
 
     /// Decides if this constraint can be satisfied and records that decision.
     override fun chooseMethod(mark: Int) {
-        satisfied = (myOutput?.mark != mark) && Strength.stronger(strength, myOutput?.walkStrength);
+        satisfied = (myOutput.mark != mark) && Strength.stronger(strength, myOutput.walkStrength);
     }
 
     /// Returns true if this constraint is satisfied in the current solution.
@@ -134,7 +133,7 @@ abstract class UnaryConstraint(val myOutput: Variable?, strength: Strength) : Co
     }
 
     /// Returns the current output variable.
-    override fun output(): Variable? = myOutput;
+    override fun output(): Variable = myOutput;
 
     /**
      * Calculate the walkabout strength, the stay flag, and, if it is
@@ -142,7 +141,7 @@ abstract class UnaryConstraint(val myOutput: Variable?, strength: Strength) : Co
      * this constraint is satisfied.
      */
     override fun  recalculate() {
-        myOutput!!.walkStrength = strength;
+        myOutput.walkStrength = strength;
         myOutput.stay = !isInput();
         if (myOutput.stay) execute(); // Stay optimization.
     }
@@ -155,7 +154,8 @@ abstract class UnaryConstraint(val myOutput: Variable?, strength: Strength) : Co
     override fun inputsKnown(mark: Int) = true;
 
     override fun removeFromGraph() {
-        if (myOutput != null) myOutput.removeConstraint(this);
+        //        if (myOutput != null)
+        myOutput.removeConstraint(this);
         satisfied = false;
     }
 }
@@ -167,12 +167,12 @@ abstract class UnaryConstraint(val myOutput: Variable?, strength: Strength) : Co
  * change their output during plan execution.  This is called "stay
  * optimization".
  */
-class StayConstraint(v: Variable?, str: Strength) : UnaryConstraint(v, str) {
+class StayConstraint(v: Variable, str: Strength) : UnaryConstraint(v, str) {
     {
         init()
     }
     override fun execute() {
-    // Stay constraints do nothing.
+        // Stay constraints do nothing.
     }
 }
 
@@ -181,7 +181,7 @@ class StayConstraint(v: Variable?, str: Strength) : UnaryConstraint(v, str) {
  * A unary input constraint used to mark a variable that the client
  * wishes to change.
  */
-class EditConstraint(v: Variable?, str: Strength) : UnaryConstraint(v, str) {
+class EditConstraint(v: Variable, str: Strength) : UnaryConstraint(v, str) {
     {
         init()
     }
@@ -204,7 +204,7 @@ val BACKWARD = 0;
  * Abstract superclass for constraints having two possible output
  * variables.
  */
-abstract class BinaryConstraint(val v1: Variable?, val v2: Variable?, strength: Strength) : Constraint(strength) {
+abstract class BinaryConstraint(val v1: Variable, val v2: Variable, strength: Strength) : Constraint(strength) {
     var direction = NONE;
 
     fun init() {
@@ -217,23 +217,23 @@ abstract class BinaryConstraint(val v1: Variable?, val v2: Variable?, strength: 
      * and record that decision.
      */
     override fun chooseMethod(mark: Int) {
-        if (v1?.mark == mark) {
-            direction = if (v2?.mark != mark && Strength.stronger(strength, v2?.walkStrength)) FORWARD else NONE
+        if (v1.mark == mark) {
+            direction = if (v2.mark != mark && Strength.stronger(strength, v2.walkStrength)) FORWARD else NONE
         }
-        if (v2?.mark == mark) {
-            direction = if (v1?.mark != mark && Strength.stronger(strength, v1?.walkStrength)) BACKWARD else NONE
+        if (v2.mark == mark) {
+            direction = if (v1.mark != mark && Strength.stronger(strength, v1.walkStrength)) BACKWARD else NONE
         }
-        if (Strength.weaker(v1?.walkStrength, v2?.walkStrength)) {
-            direction = if (Strength.stronger(strength, v1?.walkStrength)) BACKWARD else NONE
+        if (Strength.weaker(v1.walkStrength, v2.walkStrength)) {
+            direction = if (Strength.stronger(strength, v1.walkStrength)) BACKWARD else NONE
         } else {
-            direction = if (Strength.stronger(strength, v2?.walkStrength)) FORWARD else BACKWARD
+            direction = if (Strength.stronger(strength, v2.walkStrength)) FORWARD else BACKWARD
         }
     }
 
     /// Add this constraint to the constraint graph.
     override fun addToGraph() {
-        v1?.addConstraint(this);
-        v2?.addConstraint(this);
+        v1.addConstraint(this);
+        v2.addConstraint(this);
         direction = NONE;
     }
 
@@ -242,14 +242,14 @@ abstract class BinaryConstraint(val v1: Variable?, val v2: Variable?, strength: 
 
     /// Mark the input variable with the given mark.
     override fun markInputs(mark: Int) {
-        input()!!.mark = mark;
+        input().mark = mark;
     }
 
     /// Returns the current input variable
-    fun input(): Variable? = if (direction == FORWARD) v1 else v2
+    fun input(): Variable = if (direction == FORWARD) v1 else v2
 
     /// Returns the current output variable.
-    override fun output(): Variable? = if (direction == FORWARD) v2 else v1;
+    override fun output(): Variable = if (direction == FORWARD) v2 else v1;
 
     /**
      * Calculate the walkabout strength, the stay flag, and, if it is
@@ -259,7 +259,7 @@ abstract class BinaryConstraint(val v1: Variable?, val v2: Variable?, strength: 
     override fun recalculate() {
         val ihn = input()
         val out = output();
-        out!!.walkStrength = Strength.weakest(strength, ihn!!.walkStrength);
+        out.walkStrength = Strength.weakest(strength, ihn.walkStrength);
         out.stay = ihn.stay;
         if (out.stay) execute();
     }
@@ -271,12 +271,14 @@ abstract class BinaryConstraint(val v1: Variable?, val v2: Variable?, strength: 
 
     override fun inputsKnown(mark: Int): Boolean {
         val i = input();
-        return i?.mark == mark || i!!.stay || i?.determinedBy == null;
+        return i.mark == mark || i.stay || i.determinedBy == null;
     }
 
     override fun removeFromGraph() {
-        if (v1 != null) v1.removeConstraint(this);
-        if (v2 != null) v2.removeConstraint(this);
+        //        if (v1 != null)
+        v1.removeConstraint(this);
+        //        if (v2 != null)
+        v2.removeConstraint(this);
         direction = NONE;
     }
 }
@@ -289,10 +291,10 @@ abstract class BinaryConstraint(val v1: Variable?, val v2: Variable?, strength: 
  * read-only.
  */
 
-class ScaleConstraint(src: Variable?,
+class ScaleConstraint(src: Variable,
                       val scale: Variable,
                       val offset: Variable,
-                      dest: Variable?,
+                      dest: Variable,
                       strength: Strength) : BinaryConstraint(src, dest, strength) {
     {
         init()
@@ -306,8 +308,10 @@ class ScaleConstraint(src: Variable?,
 
     override fun removeFromGraph() {
         super.removeFromGraph();
-        if (scale != null) scale.removeConstraint(this);
-        if (offset != null) offset.removeConstraint(this);
+        //        if (scale != null)
+        scale.removeConstraint(this);
+        //        if (offset != null)
+        offset.removeConstraint(this);
     }
 
     override fun markInputs(mark: Int) {
@@ -319,9 +323,9 @@ class ScaleConstraint(src: Variable?,
     /// Enforce this constraint. Assume that it is satisfied.
     override fun execute() {
         if (direction == FORWARD) {
-            v2!!.value = v1!!.value * scale.value + offset.value;
+            v2.value = v1.value * scale.value + offset.value;
         } else {
-            v1!!.value = (v2!!.value - offset.value) / scale.value;
+            v1.value = (v2.value - offset.value) / scale.value;
         }
     }
 
@@ -333,8 +337,8 @@ class ScaleConstraint(src: Variable?,
     override fun recalculate() {
         val ihn = input()
         val out = output()
-        out!!.walkStrength = Strength.weakest(strength, ihn?.walkStrength);
-        out.stay = ihn!!.stay && scale.stay && offset.stay;
+        out.walkStrength = Strength.weakest(strength, ihn.walkStrength);
+        out.stay = ihn.stay && scale.stay && offset.stay;
         if (out.stay) execute();
     }
 }
@@ -348,9 +352,9 @@ class EqualityConstraint(v1: Variable, v2: Variable, strength: Strength) : Binar
         init()
     }
 
-/// Enforce this constraint. Assume that it is satisfied.
+    /// Enforce this constraint. Assume that it is satisfied.
     override fun execute() {
-        output()!!.value = input()!!.value;
+        output().value = input().value;
     }
 }
 
@@ -362,25 +366,26 @@ class EqualityConstraint(v1: Variable, v2: Variable, strength: Strength) : Binar
 * constraint solver.
 **/
 class Variable(val name: String, var value: Int) {
-  val constraints = arrayListOf<Constraint>();
-  var determinedBy: Constraint? = null;
-  var mark = 0;
-  var walkStrength = WEAKEST;
-  var stay = true;
+    val constraints = ArrayList<Constraint>();
+    var determinedBy: Constraint? = null;
+    var mark = 0;
+    var walkStrength = WEAKEST;
+    var stay = true;
 
-  /**
-   * Add the given constraint to the set of all constraints that refer
-   * this variable.
-   */
-  fun addConstraint(c: Constraint) {
-    constraints.add(c);
-  }
+    /**
+     * Add the given constraint to the set of all constraints that refer
+     * this variable.
+     */
+    fun addConstraint(c: Constraint) {
+        constraints.add(c);
+    }
 
-  /// Removes all traces of c from this variable.
-  fun removeConstraint(c: Constraint) {
-    constraints.remove(c)
-    if (determinedBy == c) determinedBy = null
-  }
+    /// Removes all traces of c from this variable.
+    fun removeConstraint(c: Constraint) {
+        constraints.remove(c)
+        if (determinedBy == c)
+            determinedBy = null
+    }
 }
 
 
@@ -426,7 +431,7 @@ class Planner {
         val out = c.output();
         c.markUnsatisfied();
         c.removeFromGraph();
-        val unsatisfied = removePropagateFrom(out!!);
+        val unsatisfied = removePropagateFrom(out);
         var strength = REQUIRED;
         do {
             for (u in unsatisfied) {
@@ -458,15 +463,15 @@ class Planner {
      * any constraint.
      * Assume: [sources] are all satisfied.
      */
-    fun makePlan(sources: List<Constraint>): Plan {
+    fun makePlan(sources: ArrayList<Constraint>): Plan {
         val mark = newMark();
         val plan = Plan();
-        val todo = ArrayList(sources); //todo
+        val todo = sources;
         while (todo.size > 0) {
             val c = todo.remove(todo.lastIndex)
-            if (c.output()?.mark != mark && c.inputsKnown(mark)) {
+            if (c.output().mark != mark && c.inputsKnown(mark)) {
                 plan.addConstraint(c)
-                c.output()!!.mark = mark
+                c.output().mark = mark
                 addConstraintsConsumingTo(c.output(), todo);
             }
         }
@@ -478,10 +483,11 @@ class Planner {
      * given [constraints], usually a set of input constraints.
      */
     fun extractPlanFromConstraints(constraints: List<Constraint>): Plan {
-        val sources = arrayListOf<Constraint>();
+        val sources = ArrayList<Constraint>();
         for (c in constraints) {
             // if not in plan already and eligible for inclusion.
-            if (c.isInput() && c.isSatisfied()) sources.add(c);
+            if (c.isInput() && c.isSatisfied())
+                sources.add(c);
         }
         return makePlan(sources);
     }
@@ -503,7 +509,7 @@ class Planner {
         val todo = arrayListOf<Constraint>(c);
         while (todo.size > 0) {
             val d = todo.remove(todo.lastIndex);
-            if (d.output()?.mark == mark) {
+            if (d.output().mark == mark) {
                 incrementalRemove(c);
                 return false;
             }
@@ -522,7 +528,7 @@ class Planner {
         out.determinedBy = null;
         out.walkStrength = WEAKEST;
         out.stay = true;
-        val unsatisfied = arrayListOf<Constraint>();
+        val unsatisfied = ArrayList<Constraint>();
         val todo = arrayListOf<Variable>(out);
         while (todo.size > 0) {
             val v = todo.remove(todo.lastIndex)
@@ -533,7 +539,7 @@ class Planner {
             for (next in v.constraints) {
                 if (next != determining && next.isSatisfied()) {
                     next.recalculate();
-                    todo.add(next.output()!!);
+                    todo.add(next.output());
                 }
             }
         }
@@ -585,28 +591,28 @@ class Plan {
 * two extremes.
 */
 fun chainTest(n: Int) {
-  planner = Planner();
-  var prev: Variable? = null
-  var first: Variable? = null
-  var last: Variable? = null
-  // Build chain of n equality constraints.
-  for (i in 0..n) {
-    val v = Variable("v", 0);
-    if (prev != null) EqualityConstraint(prev!!, v, REQUIRED);
-    if (i == 0) first = v;
-    if (i == n) last = v;
-    prev = v;
-  }
-  StayConstraint(last, STRONG_DEFAULT);
-  val edit = EditConstraint(first, PREFERRED);
-  val plan = planner?.extractPlanFromConstraints(arrayListOf<Constraint>(edit));
-  for (i in 0..99) {
-    first!!.value = i;
-    plan?.execute();
-    if (last?.value != i) {
-      print("Chain test failed.\n${last?.value}\n${i}");
+    planner = Planner();
+    var prev: Variable? = null
+    var first: Variable? = null
+    var last: Variable? = null
+    // Build chain of n equality constraints.
+    for (i in 0..n) {
+        val v = Variable("v", 0);
+        if (prev != null) EqualityConstraint(prev!!, v, REQUIRED);
+        if (i == 0) first = v;
+        if (i == n) last = v;
+        prev = v;
     }
-  }
+    StayConstraint(last!!, STRONG_DEFAULT);
+    val edit = EditConstraint(first!!, PREFERRED);
+    val plan = planner.extractPlanFromConstraints(arrayListOf<Constraint>(edit));
+    for (i in 0..99) {
+        first!!.value = i;
+        plan.execute();
+        if (last?.value != i) {
+            print("Chain test failed.\n${last?.value}\n${i}");
+        }
+    }
 }
 
 /**
@@ -616,42 +622,48 @@ fun chainTest(n: Int) {
 * mapping and to change the scale and offset factors.
 */
 fun projectionTest(n: Int) {
-  planner = Planner();
-  val scale = Variable("scale", 10)
-  val offset = Variable("offset", 1000)
-  var src: Variable? = null
-  var dst: Variable? = null;
+    planner = Planner();
+    val scale = Variable("scale", 10)
+    val offset = Variable("offset", 1000)
+    var src: Variable? = null
+    var dst: Variable? = null;
 
-  val dests = arrayListOf<Variable?>();
-  for (i in 0..n-1) {
-    src = Variable("src", i);
-    dst = Variable("dst", i);
-    dests.add(dst);
-    StayConstraint(src, NORMAL);
-    ScaleConstraint(src, scale, offset, dst, REQUIRED);
-  }
-  change(src!!, 17);
-  if (dst?.value != 1170) print("Projection 1 failed");
-  change(dst!!, 1050);
-  if (src?.value != 5) print("Projection 2 failed");
-  change(scale, 5);
-  for (i in 0..n - 2) {
-    if (dests[i]?.value != i * 5 + 1000) print("Projection 3 failed");
-  }
-  change(offset, 2000);
-  for (i in 0..n - 2) {
-    if (dests[i]?.value != i * 5 + 2000) print("Projection 4 failed");
-  }
+    val dests = arrayListOf<Variable>();
+    for (i in 0..n - 1) {
+        val tsrc = Variable("src", i);
+        val tdst = Variable("dst", i);
+        dests.add(tdst);
+        StayConstraint(tsrc, NORMAL)
+        ScaleConstraint(tsrc, scale, offset, tdst, REQUIRED)
+        src = tsrc
+        dst = tdst
+    }
+
+    val tsrc = src!!
+    val tdst = dst!!
+
+    change(tsrc, 17);
+    if (tdst.value != 1170) print("Projection 1 failed");
+    change(tdst, 1050);
+    if (tsrc.value != 5) print("Projection 2 failed");
+    change(scale, 5);
+    for (i in 0..n - 2) {
+        if (dests[i].value != i * 5 + 1000) print("Projection 3 failed");
+    }
+    change(offset, 2000);
+    for (i in 0..n - 2) {
+        if (dests[i].value != i * 5 + 2000) print("Projection 4 failed");
+    }
 }
 
 fun change(v: Variable, newValue: Int) {
-  val edit = EditConstraint(v, PREFERRED);
-  val plan = planner?.extractPlanFromConstraints(arrayListOf<EditConstraint>(edit));
-  for (i in 0..9) {
-    v.value = newValue
-    plan?.execute()
-  }
-  edit.destroyConstraint()
+    val edit = EditConstraint(v, PREFERRED);
+    val plan = planner.extractPlanFromConstraints(arrayListOf<EditConstraint>(edit));
+    for (i in 0..9) {
+        v.value = newValue
+        plan.execute()
+    }
+    edit.destroyConstraint()
 }
 
-var planner: Planner? = null;
+var planner: Planner = Planner();
