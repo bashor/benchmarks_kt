@@ -1,4 +1,4 @@
-package havlak.dart
+package havlak.from_dart
 
 import java.util.ArrayList
 import java.util.HashMap
@@ -214,9 +214,9 @@ class SimpleLoop // : Hashable
 class LSG {
     var loopCounter = 0;
     val loops = ArrayList<SimpleLoop>()
-    val root = SimpleLoop()
+    val root = SimpleLoop();
 
-            ;{
+    {
         root.nestingLevel = 0
         root.counter = loopCounter
         loopCounter++
@@ -289,9 +289,10 @@ class UnionFindNode {
     // Initialize this node.
     //
     fun initNode(bb_arg: BasicBlock, dfsNumber_arg: Int) {
-        parent = this;
-        bb = bb_arg;
-        dfsNumber = dfsNumber_arg;
+        parent = this
+        bb = bb_arg
+        dfsNumber = dfsNumber_arg
+        loop = null
     }
 
     // Union/Find Algorithm - The find routine.
@@ -638,7 +639,6 @@ fun buildBaseLoop(cfg: CFG, from: Int): Int {
     val footer   = buildStraight(cfg, diamond2, 1);
     buildConnect(cfg, diamond2, d11);
     buildConnect(cfg, diamond1, header);
-
     buildConnect(cfg, footer, from);
 
     return buildStraight(cfg, footer, 1)
@@ -660,52 +660,50 @@ fun main(args: Array<String>) {
     // execute loop recognition 15000 times to force compilation
     println("15000 dummy loops");
 
-    //for (int dummyloop = 0; dummyloop < 1; ++dummyloop) {
-    val lsglocal = LSG()
-    val finder1 = HavlakLoopFinder(cfg, lsglocal)
-    val x = finder1.findLoops()
-    println("found $x")
-    //}
+    15000 times {
+        val finder = HavlakLoopFinder(cfg, lsg)
+        finder.findLoops()
+    }
 
     println("Constructing CFG...");
     var n = 2;
 
     10 times {
         cfg.createNode(n + 1);
-        buildConnect(cfg, n, n + 1);
+        buildConnect(cfg, 2, n + 1);
         n++
-        2 times {
-            var top = n;
+        100 times {
+            val top = n;
             n = buildStraight(cfg, n, 1);
             25 times {
                 n = buildBaseLoop(cfg, n);
             }
 
-            var bottom = buildStraight(cfg, n, 1);
+            val bottom = buildStraight(cfg, n, 1);
             buildConnect(cfg, n, top);
             n = bottom;
         }
+        buildConnect(cfg, n, 1);
     }
 
     println("Performing Loop Recognition\n1 Iteration");
 
-    var finder2 = HavlakLoopFinder(cfg, lsg)
-    var num_loops = finder2.findLoops()
-    lsg.calculateNestingLevel()
+    val finder = HavlakLoopFinder(cfg, lsg)
+    val num_loops = finder.findLoops()
+//    lsg.calculateNestingLevel()
 
-    println("Found: $num_loops.\nAnother 100 iterations...");
+    println("Found: $num_loops.\nAnother 50 iterations...");
 
-    100 times {
-        val lsglocal2 = LSG();
-        val finder3 = HavlakLoopFinder(cfg, lsglocal2);
-        num_loops = finder3.findLoops();
-//        println("lsglocal2 loops: " + (lsglocal2.getNumLoops()) + " (including 1 artificial root node)")
+    50 times {
+        print(".")
+        val finder2 = HavlakLoopFinder(cfg, LSG());
+        finder2.findLoops();
     }
+    println()
 
     println("lsg loops: " + (lsg.getNumLoops()) + " (including 1 artificial root node)")
 
-    println("Found $num_loops loops (including artificial root node)" );
-
     println("# of BBs  : " + numBasicBlocks)
+
     lsg.calculateNestingLevel();
 }

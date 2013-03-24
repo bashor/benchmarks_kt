@@ -2,58 +2,44 @@ package havlak
 
 import java.util.ArrayList
 
-public open class BasicBlock(val name : Int) {
-    public open fun dump() : Unit {
-        System.out.format("BB#%03d: ", getName())
-        if (inEdges.size > 0)
-        {
-            System.out.format("in : ")
-            for (bb : BasicBlock? in inEdges)
-            {
-                System.out.format("BB#%03d ", bb?.getName())
+class BasicBlock(val name: Int) //: Hashable
+{
+    //    public override fun equals(other: Any?): Boolean {
+    //        throw UnsupportedOperationException()
+    //    }
+
+    val inEdges = ArrayList<BasicBlock>()
+    val outEdges = ArrayList<BasicBlock>()
+
+    fun hashCode() = name
+
+    fun toString() = "BB$name"
+    fun getNumPred() = inEdges.size
+    fun getNumSucc() = outEdges.size
+    fun addInEdge(bb: BasicBlock) = inEdges.add(bb);
+    fun addOutEdge(bb: BasicBlock) = outEdges.add(bb);
+
+    fun dump() {
+        var res = "  BB#$name"
+        if (inEdges.notEmpty()) {
+            res += "\tin :";
+            for (e in inEdges) {
+                res += " " + e.toString();
             }
         }
 
-        if (outEdges.size > 0)
-        {
-            System.out.format("out: ")
-            for (bb : BasicBlock? in outEdges)
-            {
-                System.out.format("BB#%03d ", bb?.getName())
+        if (outEdges.notEmpty()) {
+            res += "\tout:";
+            for (e in outEdges) {
+                res += " " + e.toString();
             }
         }
 
-        System.out.println()
+        println(res);
     }
-    public open fun getName() : Int {
-        return name
-    }
-    public open fun getInEdges() : List<BasicBlock?>? {
-        return inEdges
-    }
-    public open fun getOutEdges() : List<BasicBlock?>? {
-        return outEdges
-    }
-    public open fun getNumPred() : Int {
-        return inEdges.size
-    }
-    public open fun getNumSucc() : Int {
-        return outEdges.size
-    }
-    public open fun addOutEdge(to : BasicBlock?) : Unit {
-        outEdges.add(to)
-    }
-    public open fun addInEdge(from : BasicBlock?) : Unit {
-        inEdges.add(from)
-    }
-    private var inEdges = ArrayList<BasicBlock?>(2)
-    private var outEdges = ArrayList<BasicBlock?>(2)
 
     class object {
         var numBasicBlocks : Int = 0
-        public open fun getNumBasicBlocks() : Int {
-            return numBasicBlocks
-        }
     }
 
     {
