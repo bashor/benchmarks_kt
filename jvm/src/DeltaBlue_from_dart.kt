@@ -1,7 +1,7 @@
 package org.jetbrains.kotlin.benchmarks.DeltaBlue_from_dart
 
 import org.jetbrains.kotlin.benchmarks.BenchmarkBase
-import java.util.ArrayList
+import java.util.LinkedList
 
 fun main(args: Array<String>) {
     DeltaBlue.report();
@@ -366,7 +366,7 @@ class EqualityConstraint(v1: Variable, v2: Variable, strength: Strength) : Binar
 * constraint solver.
 **/
 class Variable(val name: String, var value: Int) {
-    val constraints = ArrayList<Constraint>();
+    val constraints = LinkedList<Constraint>();
     var determinedBy: Constraint? = null;
     var mark = 0;
     var walkStrength = WEAKEST;
@@ -463,12 +463,12 @@ class Planner {
      * any constraint.
      * Assume: [sources] are all satisfied.
      */
-    fun makePlan(sources: ArrayList<Constraint>): Plan {
+    fun makePlan(sources: LinkedList<Constraint>): Plan {
         val mark = newMark();
         val plan = Plan();
         val todo = sources;
         while (todo.size > 0) {
-            val c = todo.remove(todo.lastIndex)
+            val c = todo.removeLast()
             if (c.output().mark != mark && c.inputsKnown(mark)) {
                 plan.addConstraint(c)
                 c.output().mark = mark
@@ -483,7 +483,7 @@ class Planner {
      * given [constraints], usually a set of input constraints.
      */
     fun extractPlanFromConstraints(constraints: List<Constraint>): Plan {
-        val sources = ArrayList<Constraint>();
+        val sources = LinkedList<Constraint>();
         for (c in constraints) {
             // if not in plan already and eligible for inclusion.
             if (c.isInput() && c.isSatisfied())
@@ -506,9 +506,9 @@ class Planner {
      * constraint's output to one of its inputs.
      */
     fun addPropagate(c: Constraint, mark: Int): Boolean {
-        val todo = arrayListOf<Constraint>(c);
+        val todo = linkedListOf(c);
         while (todo.size > 0) {
-            val d = todo.remove(todo.lastIndex);
+            val d = todo.removeLast();
             if (d.output().mark == mark) {
                 incrementalRemove(c);
                 return false;
@@ -528,10 +528,10 @@ class Planner {
         out.determinedBy = null;
         out.walkStrength = WEAKEST;
         out.stay = true;
-        val unsatisfied = ArrayList<Constraint>();
-        val todo = arrayListOf<Variable>(out);
+        val unsatisfied = LinkedList<Constraint>();
+        val todo = linkedListOf(out);
         while (todo.size > 0) {
-            val v = todo.remove(todo.lastIndex)
+            val v = todo.removeLast()
             for (c in v.constraints) {
                 if (!c.isSatisfied()) unsatisfied.add(c);
             }
@@ -561,7 +561,7 @@ class Planner {
 * one or more changing inputs.
 */
 class Plan {
-    val list = ArrayList<Constraint>();
+    val list = LinkedList<Constraint>();
 
     fun addConstraint(c: Constraint) {
         list.add(c)
@@ -592,25 +592,25 @@ class Plan {
 */
 fun chainTest(n: Int) {
     planner = Planner();
-    var prev: Variable? = null
-    var first: Variable? = null
-    var last: Variable? = null
+    val first = Variable("v", 0);
+    var prev = first
+
     // Build chain of n equality constraints.
-    for (i in 0..n) {
+    for (i in 1..n) {
         val v = Variable("v", 0);
-        if (prev != null) EqualityConstraint(prev!!, v, REQUIRED);
-        if (i == 0) first = v;
-        if (i == n) last = v;
+        EqualityConstraint(prev, v, REQUIRED);
         prev = v;
     }
-    StayConstraint(last!!, STRONG_DEFAULT);
-    val edit = EditConstraint(first!!, PREFERRED);
-    val plan = planner.extractPlanFromConstraints(arrayListOf<Constraint>(edit));
+    val last = prev;
+
+    StayConstraint(last, STRONG_DEFAULT);
+    val edit = EditConstraint(first, PREFERRED);
+    val plan = planner.extractPlanFromConstraints(linkedListOf(edit));
     for (i in 0..99) {
-        first!!.value = i;
+        first.value = i;
         plan.execute();
-        if (last?.value != i) {
-            print("Chain test failed.\n${last?.value}\n${i}");
+        if (last.value != i) {
+            print("Chain test failed.\n${last.value}\n${i}");
         }
     }
 }
@@ -625,27 +625,22 @@ fun projectionTest(n: Int) {
     planner = Planner();
     val scale = Variable("scale", 10)
     val offset = Variable("offset", 1000)
-    var src: Variable? = null
-    var dst: Variable? = null;
+    var src = Variable("tmp", 0)
+    var dst = src
 
-    val dests = arrayListOf<Variable>();
+    val dests = LinkedList<Variable>();
     for (i in 0..n - 1) {
-        val tsrc = Variable("src", i);
-        val tdst = Variable("dst", i);
-        dests.add(tdst);
-        StayConstraint(tsrc, NORMAL)
-        ScaleConstraint(tsrc, scale, offset, tdst, REQUIRED)
-        src = tsrc
-        dst = tdst
+        src = Variable("src", i);
+        dst = Variable("dst", i);
+        dests.add(dst);
+        StayConstraint(src, NORMAL)
+        ScaleConstraint(src, scale, offset, dst, REQUIRED)
     }
 
-    val tsrc = src!!
-    val tdst = dst!!
-
-    change(tsrc, 17);
-    if (tdst.value != 1170) print("Projection 1 failed");
-    change(tdst, 1050);
-    if (tsrc.value != 5) print("Projection 2 failed");
+    change(src, 17);
+    if (dst.value != 1170) print("Projection 1 failed");
+    change(dst, 1050);
+    if (src.value != 5) print("Projection 2 failed");
     change(scale, 5);
     for (i in 0..n - 2) {
         if (dests[i].value != i * 5 + 1000) print("Projection 3 failed");
@@ -658,7 +653,7 @@ fun projectionTest(n: Int) {
 
 fun change(v: Variable, newValue: Int) {
     val edit = EditConstraint(v, PREFERRED);
-    val plan = planner.extractPlanFromConstraints(arrayListOf<EditConstraint>(edit));
+    val plan = planner.extractPlanFromConstraints(linkedListOf(edit));
     for (i in 0..9) {
         v.value = newValue
         plan.execute()
