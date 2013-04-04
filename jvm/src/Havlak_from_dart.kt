@@ -694,11 +694,13 @@ fun main(args: Array<String>) {
 
     println("Found: $num_loops.\nAnother 50 iterations...");
 
+    val start : Long = System.currentTimeMillis()
     50 times {
         print(".")
         val finder2 = HavlakLoopFinder(cfg, LSG());
         finder2.findLoops();
     }
+    println("\nTime: ${System.currentTimeMillis() - start} ms")
     println()
 
     println("lsg loops: " + (lsg.getNumLoops()) + " (including 1 artificial root node)")
