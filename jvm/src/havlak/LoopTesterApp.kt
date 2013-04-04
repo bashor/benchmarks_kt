@@ -1,6 +1,6 @@
 package havlak
 
-open class LoopTesterApp() {
+class LoopTesterApp() {
     fun buildDiamond(start : Int) : Int {
         var bb0 : Int = start
         BasicBlockEdge(cfg, bb0, bb0 + 1)
@@ -37,13 +37,13 @@ open class LoopTesterApp() {
     }
     val cfg = CFG()
     val lsg = LSG()
-    val root =cfg.createNode(0)
+    val root = cfg.createNode(0)
 }
 
 fun main(args : Array<String>) {
     println("Welcome to LoopTesterApp, Kotlin edition")
     println("Constructing App...")
-    var app = LoopTesterApp()
+    val app = LoopTesterApp()
     app.getMem()
 
     println("Constructing Simple CFG...")
